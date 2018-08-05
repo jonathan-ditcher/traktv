@@ -11,15 +11,14 @@ import tracktv.dto.ShowInfo;
 import tracktv.dto.ShowResponse;
 
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
  * Created by Jonathan Ditcher on 05/08/2018.
  */
-public class TrackTv {
+public class TrakTv {
 
-    private static final Logger logger = LoggerFactory.getLogger(TrackTv.class);
+    private static final Logger logger = LoggerFactory.getLogger(TrakTv.class);
     private static final String API_ENDPOINT = "https://api.trakt.tv/";
 
     private String clientId;
@@ -28,7 +27,7 @@ public class TrackTv {
     private final ObjectMapper mapper = new ObjectMapper();
     private final OkHttpClient client = new OkHttpClient();
 
-    public TrackTv(String clientId, String clientSecret) {
+    public TrakTv(String clientId, String clientSecret) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
     }

@@ -1,4 +1,4 @@
-# tracktv
+# traktv
 Trakt API
 
 Java implementation of the Trakt.tv API
