@@ -1,14 +1,15 @@
 package tracktv;
 
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import okhttp3.*;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import retrofit2.Retrofit;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 import tracktv.dto.MovieInfo;
-import tracktv.dto.MovieResponse;
 import tracktv.dto.ShowInfo;
-import tracktv.dto.ShowResponse;
+import tracktv.dto.response.MovieResponse;
+import tracktv.dto.response.ShowResponse;
 
 import java.io.IOException;
 import java.util.List;
@@ -23,9 +24,6 @@ public class TrakTv {
 
     private String clientId;
     private String clientSecret;
-
-    private final ObjectMapper mapper = new ObjectMapper();
-    private final OkHttpClient client = new OkHttpClient();
 
     public TrakTv(String clientId, String clientSecret) {
         this.clientId = clientId;
@@ -67,69 +65,53 @@ public class TrakTv {
     }
 
     private ShowResponse getShowResponse(String url, boolean extended, Integer pageNum, Integer limit) throws IOException {
-        HttpUrl.Builder httpBuider = HttpUrl.parse(API_ENDPOINT + url).newBuilder();
-        if(extended)
-            httpBuider.addQueryParameter("extended", "full");
-        if(pageNum != null)
-            httpBuider.addQueryParameter("page", String.valueOf(pageNum));
-        if(limit != null)
-            httpBuider.addQueryParameter("limit", String.valueOf(limit));
-
-        Headers headers = new Headers.Builder()
-                .add("trakt-api-version", "2")
-                .add("trakt-api-key", this.clientId)
-                .build();
-
-        Request request = new Request.Builder()
-                .headers(headers)
-                .url(url)
-                .get()
-                .build();
-
-        Response response = this.client.newCall(request).execute();
-
-        String out = response.body().string();
-        logger.trace("out[{}]", out);
+        TrakTvService service = TrakTvServiceGenerator.createService(TrakTvService.class, this.clientId);
+        List<ShowInfo> shows =  service.getShows(url, extended ? "full" : null, pageNum, limit).execute().body();
 
         ShowResponse showResponse = new ShowResponse();
-
-        JavaType javaType = this.mapper.getTypeFactory().constructCollectionType(List.class, ShowInfo.class);
-        List<ShowInfo> shows = this.mapper.readValue(out, javaType);
         showResponse.setShows(shows);
         return showResponse;
     }
 
     private MovieResponse getMovieResponse(String url, boolean extended, Integer pageNum, Integer limit) throws IOException {
         logger.trace("url[{}] extended[{}] pageNum[{}] limit[{}]", url, extended, pageNum, limit);
-        HttpUrl.Builder httpBuider = HttpUrl.parse(API_ENDPOINT + url).newBuilder();
-        if(extended)
-            httpBuider.addQueryParameter("extended", "full");
-        if(pageNum != null)
-            httpBuider.addQueryParameter("page", String.valueOf(pageNum));
-        if(limit != null)
-            httpBuider.addQueryParameter("limit", String.valueOf(limit));
 
-        Headers headers = new Headers.Builder()
-                .add("trakt-api-version", "2")
-                .add("trakt-api-key", this.clientId)
-                .build();
-
-        Request request = new Request.Builder()
-                .headers(headers)
-                .url(httpBuider.build())
-                .get()
-                .build();
-
-        Response response = this.client.newCall(request).execute();
-
-        String out = response.body().string();
-        logger.trace("out[{}]", out);
+        TrakTvService service = TrakTvServiceGenerator.createService(TrakTvService.class, this.clientId);
+        List<MovieInfo> movies =  service.getMovies(url, extended ? "full" : null, pageNum, limit).execute().body();
 
         MovieResponse movieResponse = new MovieResponse();
-
-        JavaType javaType = this.mapper.getTypeFactory().constructCollectionType(List.class, MovieInfo.class);
-        List<MovieInfo> movies = this.mapper.readValue(out, javaType);
         movieResponse.setMovies(movies);
         return movieResponse;
     }
+
+    public static class TrakTvServiceGenerator {
+
+        private static Retrofit.Builder builder  = new Retrofit.Builder()
+                .baseUrl(API_ENDPOINT)
+                .addConverterFactory(JacksonConverterFactory.create());
+
+        private static Retrofit retrofit = builder.build();
+
+        private static OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+
+        public static <S> S createService(Class<S> serviceClass) {
+            return retrofit.create(serviceClass);
+        }
+
+        public static <S> S createService(Class<S> serviceClass, String clientId) {
+            httpClient.interceptors().clear();
+            httpClient.addInterceptor( chain -> {
+                Request original = chain.request();
+                Request request = original.newBuilder()
+                        .header("trakt-api-key", clientId)
+                        .build();
+                return chain.proceed(request);
+            });
+            builder.client(httpClient.build());
+            retrofit = builder.build();
+
+            return retrofit.create(serviceClass);
+        }
+    }
+
 }

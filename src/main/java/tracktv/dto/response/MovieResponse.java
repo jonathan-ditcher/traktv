@@ -1,6 +1,7 @@
-package tracktv.dto;
+package tracktv.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import tracktv.dto.MovieInfo;
 
 import java.util.List;
 
